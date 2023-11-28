@@ -8,7 +8,8 @@ namespace PainterCore
     {
         public PaintingController()
         {
-            const string ip = "192.168.1.101";
+            //const string ip = "192.168.1.101";
+            const string ip = "192.168.1.100";
 
             _painter = new(ip);
             _palette = new(_painter);
