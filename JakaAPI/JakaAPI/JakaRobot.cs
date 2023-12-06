@@ -217,7 +217,53 @@ namespace JakaAPI
             _socketSending.Send(command);
 
             OnPostCommand();
+
+            WaitToReachPosition(cartesianPosition);
+
         }
+
+        public void WaitToReachPosition(CartesianPosition cartesianPosition)
+        {
+            //waiting to reach a target position
+            double vareps = 0.1; //error in position in mm
+            RobotData rd = GetRobotData();
+            while (Math.Abs(rd.ArmCartesianPosition.Point.X - cartesianPosition.Point.X) > vareps ||
+                   Math.Abs(rd.ArmCartesianPosition.Point.Y - cartesianPosition.Point.Y) > vareps ||
+                   Math.Abs(rd.ArmCartesianPosition.Point.Z - cartesianPosition.Point.Z) > vareps
+                )
+            {
+                rd = GetRobotData();
+            }
+        }
+
+        /// <summary>
+        /// Enter or exit servo move mode
+        /// </summary>
+        /// <param name="relFlag">Set 1 to enter servo mode and 0 to exit servo mode</param>
+        public void ServoMove(int relFlag)
+        {
+            byte[] command = JakaCommand.BuildAsByteArray("servo_move",
+                new CommandParameter("relFlag", relFlag.ToString(CultureInfo.InvariantCulture)));
+            _socketSending.Send(command);
+
+            OnPostCommand();
+        }
+
+        /// <summary>
+        /// Cartesian move in servo move mode
+        /// </summary>
+        /// <param name="cartesianPosition">Specific point in cartesian space</param>
+        /// <param name="movementType">Type of a movement (absolute or relative)</param>
+        public void CartesianMoveControl(CartesianPosition cartesianPosition, MovementType movementType)
+        {
+            byte[] command = JakaCommand.BuildAsByteArray("servo_p",
+                new CommandParameter("catPosition", $"{cartesianPosition}"),
+                 new CommandParameter("relFlag", $"{(int)movementType}"));
+            _socketSending.Send(command);
+
+            OnPostCommand();          
+        }
+
 
         #endregion
 

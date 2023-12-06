@@ -8,8 +8,8 @@ namespace PainterCore
     {
         public PaintingController()
         {
-            //const string ip = "192.168.1.101";
-            const string ip = "192.168.1.100";
+            const string ip = "192.168.1.101";
+            //const string ip = "192.168.1.100";
 
             _painter = new(ip);
             _palette = new(_painter);
@@ -38,6 +38,8 @@ namespace PainterCore
 
             ParserHPGL commands = new(@"..\..\..\Resources\strokes2.plt");
 
+            bool statedown = false;//indicated whether the robot is in down or up position
+
             foreach (CommandHPGL command in commands.GetNextCommand())
             {
                 Console.WriteLine($"Executing: {command}");
@@ -52,12 +54,20 @@ namespace PainterCore
                     case CodeHPGL.PW:
                         break;
                     case CodeHPGL.PU:
-                        _painter.BrushOrthogonalMove(_brushLength + 100, MovementType.Absolute);
-                        BrushMove(command.Arguments);
+                        _painter.BrushOrthogonalMove(_brushLength + 10, MovementType.Absolute);
+                        MoveHorizontal(command.Arguments);
+                        statedown = false;
+                        Console.Beep();
                         break;
                     case CodeHPGL.PD:
-                        _painter.BrushOrthogonalMove(_brushLength + 0, MovementType.Absolute);
-                        BrushMove(command.Arguments);
+
+                        if (!statedown)
+                            _painter.BrushOrthogonalMove(_brushLength + 0, MovementType.Absolute);
+                        DrawLine(command.Arguments);
+                        //MoveHorizontal(command.Arguments);
+                        statedown = true;
+                        Console.Beep();
+                        Console.Beep();
                         break;
                 }
 
@@ -140,7 +150,7 @@ namespace PainterCore
             _painter.DunkBrushInColor(_palette.GetColorCoordinates(color));
         }
 
-        private void BrushMove(double[] arguments)
+        private void DrawLine(double[] arguments)
         {
             if (false && _palette.GetStrokesLeft(_currentColor) == 0)
             {
@@ -149,6 +159,11 @@ namespace PainterCore
             }
 
             _painter.DrawLine(arguments[0], arguments[1]);
+        }
+
+        private void MoveHorizontal(double[] arguments)
+        {
+           _painter.MoveHorizontal(arguments[0], arguments[1]);
         }
 
         private void InitPainter()

@@ -3,7 +3,7 @@
     public class Logger
     {
         private readonly string _path = @"..\..\..\Log";
-        private string _filePath; 
+        private string _filePath;
 
         public Logger()
         {
@@ -12,6 +12,7 @@
             _filePath = Path.Combine(_path, CreateUniqueFileName());
 
             LogMessage($"Started logger\n\nRobot painter commands log file\n\nDate: {DateTime.Now.Date:d}\n");
+
         }
 
         private string CreateUniqueFileName()
@@ -21,6 +22,10 @@
             return $"{currentDate:dd-MM-yyyy}-{logFiles.Length + 1}.log";
         }
 
-        public void LogMessage(string message) => File.AppendAllText(_filePath, $"[{DateTime.Now:t}]: {message}\n");
+
+        //public void LogMessage(string message) => File.AppendAllText(_filePath, $"[{DateTime.Now:t}]: {message}\n");
+        public void LogMessage(string message) => File.AppendAllTextAsync(_filePath, $"[{DateTime.Now:t}]: {message}\n");
+        
+
     }
 }

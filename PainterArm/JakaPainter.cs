@@ -77,8 +77,35 @@ namespace PainterArm
         /// <param name="y">Y-axis offset in millimeters</param>
         public void DrawLine(double x, double y)
         {
-            Point point3d = _canvasCoordinateSystem!.CanvasPointToWorldPoint(_currentX = x, _currentY = y, _currentHeight);
-            MoveLinear(new CartesianPosition(point3d, _canvasCoordinateSystem.RPYParameters), 100, 25, MovementType.Absolute);
+            //replacing MoveLinear(new CartesianPosition(point3d, _canvasCoordinateSystem.RPYParameters), 100, 25, MovementType.Absolute);
+            double t = 8e-3; //repeating time
+            double v = 20; //robot speed
+
+            double d = v * t; //distance covered during repeating time
+            double D = Math.Sqrt((x - _currentX) * (x - _currentX) + (y - _currentY)*(y - _currentY));
+            int n = (int)Math.Floor(D/d);
+            double dx = (x - _currentX) / n;
+            double dy = (y - _currentY) / n;
+
+
+            ServoMove(1); //enter servo mode
+            Point newpoint;
+            for (int i = 0; i< n; i++)
+            {
+                _currentX += dx;
+                _currentY += dy;
+                newpoint = _canvasCoordinateSystem!.CanvasPointToWorldPoint(_currentX, _currentY, _currentHeight); //new current point
+                CartesianMoveControl(new CartesianPosition(newpoint, _canvasCoordinateSystem.RPYParameters), MovementType.Absolute);
+                Thread.Sleep((int)(t * 1000) - 2 * _commandDelay);
+            }
+
+            _currentX = x;
+            _currentY = y;
+            newpoint = _canvasCoordinateSystem!.CanvasPointToWorldPoint(_currentX, _currentY, _currentHeight); //go to final current point
+            CartesianMoveControl(new CartesianPosition(newpoint, _canvasCoordinateSystem.RPYParameters), MovementType.Absolute);
+
+            ServoMove(0); //exit servo mode
+            //Thread.Sleep(100);
         }
 
         // Raw method, will be implemented soon
@@ -97,10 +124,8 @@ namespace PainterArm
         public void BrushOrthogonalMove(double height, MovementType movementType)
         {
             _currentHeight = (movementType == MovementType.Relative) ? _currentHeight + height : height;
-
             Point point3d = _canvasCoordinateSystem!.CanvasPointToWorldPoint(_currentX, _currentY, _currentHeight);
-
-            MoveLinear(new CartesianPosition(point3d, _canvasCoordinateSystem.RPYParameters), 100, 25, MovementType.Absolute);
+            MoveLinear(new CartesianPosition(point3d, _canvasCoordinateSystem.RPYParameters), 1000, 250, MovementType.Absolute);
         }
 
         /// <summary>
@@ -238,5 +263,22 @@ namespace PainterArm
         /// </summary>
         /// <param name="enable">If true, checker will be enabled, else it will be disabled</param>
         public void SetBrushHolderCheckingState(bool enable) => SetDOState(0, 9, enable);
+
+        /// <summary>
+        /// Draw line with canvas 2D coordinates
+        /// </summary>
+        /// <param name="x">X-axis offset in millimeters <i>(or special units like 25 micron?)</i></param>
+        /// <param name="y">Y-axis offset in millimeters</param>
+        public void MoveHorizontal(double x, double y)
+        {
+            Point point3d = _canvasCoordinateSystem!.CanvasPointToWorldPoint(x, y, _currentHeight); //new point
+
+            MoveLinear(new CartesianPosition(point3d, _canvasCoordinateSystem.RPYParameters), 1000, 250, MovementType.Absolute);
+
+            _currentX = x;
+            _currentY = y;
+        }
+
+
     }
 }

@@ -61,10 +61,10 @@ namespace PainterCore.Configuration
                 Console.WriteLine();
                 switch (option)
                 {
-                    case "Y":
+                    case "Y" or "y":
                         loadableObject = LoadFromFile<T>(configPath)!;
                         return;
-                    case "N":
+                    case "N" or "n":
                         loadableObject = (calibrationBehavior.Calibrate() as T)!;
                         SaveToFile(loadableObject, configPath);
                         return;
