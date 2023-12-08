@@ -1,6 +1,8 @@
 ﻿using PainterArm;
 using PainterCore.Configuration;
 using JakaAPI.Types;
+using System.Net;
+using System.Net.Sockets;
 
 namespace PainterCore
 {
@@ -26,19 +28,24 @@ namespace PainterCore
 
         private double _brushLength = 157.5;
 
-        public void Start()
+        public async void Start()
         {
             _painter.DebugSubscribe(_logger.LogMessage);
-            //InitPainter();
+           // InitPainter();
 
             Console.WriteLine("Calibration started.");
             CalibrateAllDevices();
             Console.WriteLine("Calibration ended. Press any key to continue...");
             Console.ReadKey();
 
-            ParserHPGL commands = new(@"..\..\..\Resources\strokes2.plt");
+            ParserHPGL commands = new(@"..\..\..\Resources\strokes1.plt");
+
 
             bool statedown = false;//indicated whether the robot is in down or up position
+            
+            //IPEndPoint ipEndPoint = new IPEndPoint(IPAddress.Parse("192.168.1.199"), 1024);
+            //Socket _s = new(ipEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+            
 
             foreach (CommandHPGL command in commands.GetNextCommand())
             {
@@ -57,22 +64,24 @@ namespace PainterCore
                         _painter.BrushOrthogonalMove(_brushLength + 10, MovementType.Absolute);
                         MoveHorizontal(command.Arguments);
                         statedown = false;
-                        Console.Beep();
                         break;
                     case CodeHPGL.PD:
-
                         if (!statedown)
                             _painter.BrushOrthogonalMove(_brushLength + 0, MovementType.Absolute);
                         DrawLine(command.Arguments);
-                        //MoveHorizontal(command.Arguments);
                         statedown = true;
+                        break;
+                    case CodeHPGL.BM:
                         Console.Beep();
-                        Console.Beep();
+                        BrushMove(command.Arguments);
                         break;
                 }
 
+                
                 Thread.Sleep(500);
             }
+
+            
 
             //DisablePainter();
 
@@ -90,6 +99,7 @@ namespace PainterCore
             _painter.CalibrateCanvas(canvasCoordinateSystem);
             Console.WriteLine($"Calibrated coordinates:\n{canvasCoordinateSystem}\n{canvasCoordinateSystem.RPYParameters}\n");
             _logger.LogMessage($"Calibrated coordinates:\n{canvasCoordinateSystem}\n{canvasCoordinateSystem.RPYParameters}\n");
+          
 
             // Brushes calibration
             ConfigurationManager.CalibrationDialog(out LocationDictionary brushesLocations,
@@ -158,7 +168,25 @@ namespace PainterCore
                 _mixer.MixColor(_palette.GetColorCoordinates(_currentColor), _currentColor);
             }
 
-            _painter.DrawLine(arguments[0], arguments[1]);
+            if (arguments.Length == 2)
+            {
+                _painter.DrawLine(arguments[0], arguments[1]);
+            }
+            else
+            {
+                _painter.DrawLine(arguments[0], arguments[1], arguments[2]);
+            }
+        }
+
+        private void BrushMove(double[] arguments)
+        {
+            if (false && _palette.GetStrokesLeft(_currentColor) == 0)
+            {
+                _palette.UpdateColor(_currentColor);
+                _mixer.MixColor(_palette.GetColorCoordinates(_currentColor), _currentColor);
+            }
+
+            _painter.BrushMove(arguments);
         }
 
         private void MoveHorizontal(double[] arguments)

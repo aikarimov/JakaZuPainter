@@ -36,8 +36,8 @@ namespace JakaAPI
             ReadSendingResponse();
             Thread.Sleep(_commandDelay);
 
-            var outdata = JsonSerializer.Deserialize<Dictionary<string,string>>(_lastSendingResponse);//convert output into dictionary of string-string
-            char errCode = outdata["errorCode"][0];//get value of errorCode
+            var outdata = JsonSerializer.Deserialize<Dictionary<string,object>>(_lastSendingResponse);//convert output into dictionary of string-string
+            char errCode = outdata["errorCode"].ToString()[0];//get value of errorCode
 
             if (errCode != '0')
             {

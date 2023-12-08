@@ -1,6 +1,7 @@
 ﻿using JakaAPI.Types.Math;
 using PainterArm.Calibration;
 using System.Text.Json.Serialization;
+using PainterArm.MathExtensions;
 
 namespace PainterArm
 {
@@ -88,6 +89,28 @@ namespace PainterArm
             if (!(x >= 0 && x <= MaxX || y >= 0 && y <= MaxY)) throw new ArgumentException("X or Y out of field");
             return (Point)((Vector3)Zero + _axisX * x + _axisY * y + _zShift * z);
         }
+
+
+        /// <summary>
+        /// Converts a world point into canvas point using calibration points
+        /// </summary>
+        /// <param name="x">X position on a canvas in units</param>
+        /// <param name="y">Y position on a canvas in units</param>
+        /// <param name="z">Z shifting perpendicular to canvas</param>
+        /// <returns><see cref="Point"/> of the canvas in robot coordinates</returns>
+        /// <exception cref="ArgumentException"></exception>
+        public Point WorldPointToCanvasPoint(double a, double b, double c)
+        {
+            Matrix M = new Matrix(_axisX, _axisY, _zShift);
+            double[,] data = { { a - Zero.X }, { b - Zero.Y }, { c - Zero.Z } };
+            Matrix B = new Matrix(data);
+
+            Matrix v = Matrix.SolveLinearEquation(M, B);
+            return new Point(v[0, 0], v[1, 0], v[2, 0]);
+        }
+
+
+
 
         /// <summary>
         /// Returns the vector perpendicular to the canvas in the specific direction

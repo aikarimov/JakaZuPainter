@@ -58,7 +58,26 @@ namespace PainterArm
         /// Canvas calibration based on existing <see cref="CoordinateSystem2D"/>
         /// </summary>
         /// <param name="cs">Existing coordinate system to be used as canvas</param>
-        public void CalibrateCanvas(CoordinateSystem2D cs) => _canvasCoordinateSystem = cs;
+        public void CalibrateCanvas(CoordinateSystem2D cs)
+        {
+            _canvasCoordinateSystem = cs;
+            UpdateRobotPosition();
+        }
+
+        /// <summary>
+        /// Canvas calibration based on existing <see cref="CoordinateSystem2D"/>
+        /// </summary>
+        public void UpdateRobotPosition()
+        {
+            //get current points
+            Point p = GetRobotData().ArmCartesianPosition.Point;
+            Point pcanvas = _canvasCoordinateSystem!.WorldPointToCanvasPoint(p.X, p.Y, p.Z);
+            _currentX = pcanvas.X;
+            _currentY = pcanvas.Y;
+            _currentHeight = pcanvas.Z;
+        }
+
+
 
         /// <summary>
         /// Brushes calibration
@@ -73,19 +92,23 @@ namespace PainterArm
         /// <summary>
         /// Draw line with canvas 2D coordinates
         /// </summary>
-        /// <param name="x">X-axis offset in millimeters <i>(or special units like 25 micron?)</i></param>
-        /// <param name="y">Y-axis offset in millimeters</param>
-        public void DrawLine(double x, double y)
+        /// <param name="x">X-axis coordinates in millimeters</param>
+        /// <param name="y">Y-axis coordinates in millimeters</param>
+        /// /// <param name="deltaz">Z-axis offset in millimeters, negative or positive</param>
+        public void DrawLine(double x, double y, double deltaz = 0)
         {
             //replacing MoveLinear(new CartesianPosition(point3d, _canvasCoordinateSystem.RPYParameters), 100, 25, MovementType.Absolute);
-            double t = 8e-3; //repeating time
+            double t = 4e-3; //repeating time
             double v = 20; //robot speed
 
             double d = v * t; //distance covered during repeating time
-            double D = Math.Sqrt((x - _currentX) * (x - _currentX) + (y - _currentY)*(y - _currentY));
+            double D = Math.Sqrt((x - _currentX) * (x - _currentX) + (y - _currentY)*(y - _currentY) + deltaz* deltaz);
             int n = (int)Math.Floor(D/d);
             double dx = (x - _currentX) / n;
             double dy = (y - _currentY) / n;
+            double dz = deltaz / n;
+
+            double Z0 = _currentHeight;
 
 
             ServoMove(1); //enter servo mode
@@ -94,18 +117,57 @@ namespace PainterArm
             {
                 _currentX += dx;
                 _currentY += dy;
+                _currentHeight += dz;
                 newpoint = _canvasCoordinateSystem!.CanvasPointToWorldPoint(_currentX, _currentY, _currentHeight); //new current point
                 CartesianMoveControl(new CartesianPosition(newpoint, _canvasCoordinateSystem.RPYParameters), MovementType.Absolute);
-                Thread.Sleep((int)(t * 1000) - 2 * _commandDelay);
+                Thread.Sleep((int)(t * 1000));
             }
 
             _currentX = x;
             _currentY = y;
+            _currentHeight = Z0 + deltaz;
             newpoint = _canvasCoordinateSystem!.CanvasPointToWorldPoint(_currentX, _currentY, _currentHeight); //go to final current point
             CartesianMoveControl(new CartesianPosition(newpoint, _canvasCoordinateSystem.RPYParameters), MovementType.Absolute);
 
             ServoMove(0); //exit servo mode
-            //Thread.Sleep(100);
+        }
+
+        /// <summary>
+        /// Brush cartesian move in 3D coordinates
+        /// </summary>
+        /// <param name="coordinates"> X, Y, dZ coordinates in millimeters</param>
+        public void BrushMove(double[] coordinates)
+        {
+            int scalef = 40; //scaling factor
+            int ctr = 1;
+
+            double newheight = _currentHeight;
+            //point j
+            for (int j = 0; j < 12; j += 3)
+            {
+                double x = coordinates[j];
+                double y = coordinates[j + 1];
+                double deltaz = coordinates[j + 2];
+                Point newpoint = _canvasCoordinateSystem!.CanvasPointToWorldPoint(x, y, newheight + deltaz); //new current point
+
+                int dx = (int)(scalef * (newpoint.X));
+                int dy = (int)(scalef * (newpoint.Y));
+                int dz = (int)(scalef * (newpoint.Z));
+
+                ModifyVariables(5501 + j, string.Format("x{0}", ctr), dx);
+                ModifyVariables(5502 + j, string.Format("y{0}", ctr), dy);
+                ModifyVariables(5503 + j, string.Format("z{0}", ctr), dz);
+
+                ctr++;
+                newheight += deltaz;
+            }
+
+
+            Console.WriteLine(QueryVariables());
+
+            LoadProgram("jakatest1");
+            PlayProgram();
+            UpdateRobotPosition();
         }
 
         // Raw method, will be implemented soon
@@ -125,7 +187,8 @@ namespace PainterArm
         {
             _currentHeight = (movementType == MovementType.Relative) ? _currentHeight + height : height;
             Point point3d = _canvasCoordinateSystem!.CanvasPointToWorldPoint(_currentX, _currentY, _currentHeight);
-            MoveLinear(new CartesianPosition(point3d, _canvasCoordinateSystem.RPYParameters), 1000, 250, MovementType.Absolute);
+
+            MoveLinear(new CartesianPosition(point3d, _canvasCoordinateSystem.RPYParameters), 100, 100, MovementType.Absolute);
         }
 
         /// <summary>
@@ -273,7 +336,7 @@ namespace PainterArm
         {
             Point point3d = _canvasCoordinateSystem!.CanvasPointToWorldPoint(x, y, _currentHeight); //new point
 
-            MoveLinear(new CartesianPosition(point3d, _canvasCoordinateSystem.RPYParameters), 1000, 250, MovementType.Absolute);
+            MoveLinear(new CartesianPosition(point3d, _canvasCoordinateSystem.RPYParameters), 100, 100, MovementType.Absolute);
 
             _currentX = x;
             _currentY = y;

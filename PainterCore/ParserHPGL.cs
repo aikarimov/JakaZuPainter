@@ -26,13 +26,14 @@ namespace PainterCore
         PW, // Pen width (w)
         PU, // Pen up and move to (x, y)
         PD, // Pen down and move to (x, y)
+        BM, // Brush move down to (x, y, deltaz) 
     }
 
     public class ParserHPGL
     {
         private readonly char _delimiter = ';';
         private string _filePath;
-
+        private const double sf = 0.025; //scale factor, dividing all coordinates by 40 to get mm
         public ParserHPGL(string filePath = @"..\..\..\Resources\strokes.plt")
         {
             _filePath = filePath;
@@ -76,6 +77,10 @@ namespace PainterCore
             for (int i = 0; i < argsArr.Length; i++)
             {
                 arguments[i] = Double.Parse(argsArr[i], CultureInfo.InvariantCulture);
+                if (code != CodeHPGL.PC) //if numbers do not refer to special commands
+                {
+                    arguments[i] *= sf; //convert HPGL units to mm
+                }
             }
 
             return new CommandHPGL(code, arguments);

@@ -101,11 +101,12 @@ namespace JakaAPI
         /// <summary>
         /// Function for playing a loaded program
         /// </summary>
-        public void PlayProgram()
+        public void PlayProgram(bool onpostcommand = true)
         {
             byte[] command = JakaCommand.BuildAsByteArray("play_program");
             _socketSending.Send(command);
-            OnPostCommand();
+            if(onpostcommand)
+                OnPostCommand();
         }
 
         /// <summary>
@@ -435,6 +436,30 @@ namespace JakaAPI
         {
             byte[] command = JakaCommand.BuildAsByteArray("set_clsn_sensitivity",
                 new CommandParameter("sensitivityVal", sensitivity.ToString()));
+            _socketSending.Send(command);
+            OnPostCommand();
+        }
+
+        /// <summary>
+        /// Query user-defined system variables, get receive JSON meggase
+        /// </summary>
+        public string QueryVariables()
+        {
+            byte[] command = JakaCommand.BuildAsByteArray("query_user_defined_variable");
+            _socketSending.Send(command);
+            Thread.Sleep(_commandDelay);
+            return ReadSendingResponse();
+        }
+
+        /// <summary>
+        /// Modify user-defined system variables, get receive JSON meggase
+        /// </summary>
+        public void ModifyVariables(int id_new, string name_new, float value_new)
+        {
+            byte[] command = JakaCommand.BuildAsByteArray("modify_user_defined_variable",
+                new CommandParameter("id_new", id_new.ToString()),
+                new CommandParameter("alias_new",name_new,true),
+                new CommandParameter("value_new", value_new.ToString()));
             _socketSending.Send(command);
             OnPostCommand();
         }
