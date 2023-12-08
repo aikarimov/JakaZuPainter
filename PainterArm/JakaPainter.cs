@@ -141,9 +141,16 @@ namespace PainterArm
             int scalef = 40; //scaling factor
             int ctr = 1;
 
+            //go to initial position for correct program execution
+            MoveLinear(new CartesianPosition(-326.353, 170.510, 116.257, -178.062, -1.905, 44.928), 25, 100, MovementType.Absolute);
+            UpdateRobotPosition();
+
             double newheight = _currentHeight;
+            int N = coordinates.Length;
+            int npts = (int)Math.Floor(N / 3.0); //number of points in the stroke
+            ModifyVariables(5500, "npts", npts);
             //point j
-            for (int j = 0; j < 12; j += 3)
+            for (int j = 0; j < N; j += 3)
             {
                 double x = coordinates[j];
                 double y = coordinates[j + 1];
@@ -162,8 +169,6 @@ namespace PainterArm
                 newheight += deltaz;
             }
 
-
-            Console.WriteLine(QueryVariables());
 
             LoadProgram("jakatest1");
             PlayProgram();

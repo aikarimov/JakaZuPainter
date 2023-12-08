@@ -76,9 +76,7 @@ namespace PainterCore
                         BrushMove(command.Arguments);
                         break;
                 }
-
-                
-                Thread.Sleep(500);
+                //Thread.Sleep(500);
             }
 
             
