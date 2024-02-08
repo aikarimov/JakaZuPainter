@@ -360,8 +360,10 @@ namespace JakaAPI
         {
             byte[] command = JakaCommand.BuildAsByteArray("get_loaded_program");
             _socketSending.Send(command);
-            Thread.Sleep(_commandDelay);
-            return JsonNode.Parse(ReadSendingResponse())!.AsObject()["program_name"]!.GetValue<string>();
+            //Thread.Sleep(_commandDelay);
+            Thread.Sleep(20);
+            string pname = ReadSendingResponse();
+            return JsonNode.Parse(pname)!.AsObject()["programName"]!.GetValue<string>();
         }
 
         /// <summary>

@@ -10,8 +10,8 @@ namespace PainterCore
     {
         public PaintingController()
         {
-            const string ip = "192.168.1.101";
-            //const string ip = "192.168.1.100";
+            //const string ip = "192.168.1.101";
+            const string ip = "192.168.1.100";
 
             _painter = new(ip);
             _palette = new(_painter);
@@ -38,14 +38,13 @@ namespace PainterCore
             Console.WriteLine("Calibration ended. Press any key to continue...");
             Console.ReadKey();
 
-            ParserHPGL commands = new(@"..\..\..\Resources\strokes1.plt");
+            //ParserHPGL commands = new(@"..\..\..\Resources\strokes_lib.plt");
+            ParserHPGL commands = new(@"..\..\..\Resources\strokes_lib_bb.plt");
+            //ParserHPGL commands = new(@"..\..\..\Resources\strokes_randlib.plt");
 
 
             bool statedown = false;//indicated whether the robot is in down or up position
-            
-            //IPEndPoint ipEndPoint = new IPEndPoint(IPAddress.Parse("192.168.1.199"), 1024);
-            //Socket _s = new(ipEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-            
+                       
 
             foreach (CommandHPGL command in commands.GetNextCommand())
             {
@@ -75,11 +74,38 @@ namespace PainterCore
                         Console.Beep();
                         BrushMove(command.Arguments);
                         break;
+                    case CodeHPGL.TP:
+                        TakePaint(command.Arguments);
+                        break;
+                    case CodeHPGL.PB:
+                        _painter.PlaceBrush();
+                        break;
+                    case CodeHPGL.BW:
+                        _painter.PlaceWasher();
+                        break;
+                    case CodeHPGL.TW:
+                        _painter.TakeWasher();
+                        break;
+                    case CodeHPGL.BD:
+                        _painter.PlaceDrier();
+                        break;
+                    case CodeHPGL.TD:
+                        _painter.TakeDrier();
+                        break;
+                    case CodeHPGL.BB:
+                        Console.Beep();
+                        _painter.BezierMove(command.Arguments);
+                        break;
+                    case CodeHPGL.DL:
+                        Console.Beep(100, 500);
+                        _painter.Delay(command.Arguments);
+                        break;
                 }
                 //Thread.Sleep(500);
             }
+            //add sound to indicate the end of program
+            Console.Beep(440, 500);
 
-            
 
             //DisablePainter();
 
@@ -186,6 +212,17 @@ namespace PainterCore
 
             _painter.BrushMove(arguments);
         }
+
+        private void TakePaint(double[] arguments)
+        {
+            _painter.TakePaint(arguments);
+        }
+
+        private void TakeaPhoto()
+        {
+            _painter.TakeaPhoto();
+        }
+            
 
         private void MoveHorizontal(double[] arguments)
         {

@@ -19,6 +19,12 @@ namespace PainterArm
         private const double _brushLength = 157.5;
         private const double _needleLength = 157.5;
 
+        private const double _readyheight = 10.5;
+
+        private CartesianPosition _initialPosition = new(-294, 276, 122, 180, 0, 0);//position in the middle of canvas, 13 mm above it
+        private JointsPosition _initialJointPosition = new(121.291, 62.202, -100.304, 128.102, 90.000, 31.291);
+
+
         public int CurrentBrush { get; private set; }
 
         private readonly Dictionary<int, int> _brushesDI = new()
@@ -70,11 +76,11 @@ namespace PainterArm
         public void UpdateRobotPosition()
         {
             //get current points
-            Point p = GetRobotData().ArmCartesianPosition.Point;
+            /*Point p = GetRobotData().ArmCartesianPosition.Point;
             Point pcanvas = _canvasCoordinateSystem!.WorldPointToCanvasPoint(p.X, p.Y, p.Z);
             _currentX = pcanvas.X;
             _currentY = pcanvas.Y;
-            _currentHeight = pcanvas.Z;
+            _currentHeight = pcanvas.Z;*/
         }
 
 
@@ -142,8 +148,10 @@ namespace PainterArm
             int ctr = 1;
 
             //go to initial position for correct program execution
-            MoveLinear(new CartesianPosition(-326.353, 170.510, 116.257, -178.062, -1.905, 44.928), 25, 100, MovementType.Absolute);
-            UpdateRobotPosition();
+            //MoveLinear(_initialPosition, 20, 20, MovementType.Absolute);
+            //JointMove(_initialJointPosition, 5, 10, MovementType.Absolute);
+            //Thread.Sleep(1500);
+            //UpdateRobotPosition();
 
             double newheight = _currentHeight;
             int N = coordinates.Length;
@@ -155,11 +163,15 @@ namespace PainterArm
                 double x = coordinates[j];
                 double y = coordinates[j + 1];
                 double deltaz = coordinates[j + 2];
-                Point newpoint = _canvasCoordinateSystem!.CanvasPointToWorldPoint(x, y, newheight + deltaz); //new current point
+                //Point newpoint = _canvasCoordinateSystem!.CanvasPointToWorldPoint(x, y, newheight + deltaz); //new current point
 
-                int dx = (int)(scalef * (newpoint.X));
-                int dy = (int)(scalef * (newpoint.Y));
-                int dz = (int)(scalef * (newpoint.Z));
+                /*int dx = (int)(scalef * newpoint.X);
+                int dy = (int)(scalef * newpoint.Y);
+                int dz = (int)(scalef * newpoint.Z);*/
+
+                int dx = (int)(x);
+                int dy = (int)(y);
+                int dz = (int)(deltaz);
 
                 ModifyVariables(5501 + j, string.Format("x{0}", ctr), dx);
                 ModifyVariables(5502 + j, string.Format("y{0}", ctr), dy);
@@ -170,10 +182,172 @@ namespace PainterArm
             }
 
 
-            LoadProgram("jakatest1");
+            //LoadProgram("jakastroke.ngc");
+            LoadProgram("stroke.ngc");
+            Thread.Sleep(100);
+            Console.WriteLine("Program is loaded: {0}",GetLoadedProgramName());
             PlayProgram();
-            UpdateRobotPosition();
+            //UpdateRobotPosition();
+            while (GetProgramStatus() != "idle")
+                Thread.Sleep(100);
         }
+
+        /// <summary>
+        /// Brush cartesian move using bezier in 3D coordinates
+        /// </summary>
+        /// <param name="coordinates"> X, Y, dZ coordinates in millimeters</param>
+        public void BezierMove(double[] coordinates)
+        {
+            int scalef = 40; //scaling factor
+            int ctr = 1;
+
+            double newheight = _currentHeight;
+            int N = coordinates.Length;
+            int npts = (int)Math.Floor(N / 3.0); //number of points in the stroke
+            ModifyVariables(5500, "npts", npts);
+            //point j
+            for (int j = 0; j < N; j += 3)
+            {
+                double x = coordinates[j];
+                double y = coordinates[j + 1];
+                double deltaz = coordinates[j + 2];
+
+                int dx = (int)(x);
+                int dy = (int)(y);
+                int dz = (int)(deltaz);
+
+                ModifyVariables(5501 + j, string.Format("x{0}", ctr), dx);
+                ModifyVariables(5502 + j, string.Format("y{0}", ctr), dy);
+                ModifyVariables(5503 + j, string.Format("z{0}", ctr), dz);
+
+                ctr++;
+                newheight += deltaz;
+            }
+
+            LoadProgram("strokebezier.ngc");
+            Thread.Sleep(100);
+            Console.WriteLine("Program is loaded: {0}", GetLoadedProgramName());
+            PlayProgram();
+            //UpdateRobotPosition();
+            while (GetProgramStatus() != "idle")
+                Thread.Sleep(100);
+        }
+
+        /// <summary>
+        /// Brush cartesian move in 3D coordinates
+        /// </summary>
+        /// <param name="coordinates"> X, Y, dZ coordinates in millimeters</param>
+        public void TakePaint(double[] coordinates)
+        {
+            int scalef = 40; //scaling factor
+            int dx = (int)(scalef * coordinates[0]);
+            int dy = (int)(scalef * coordinates[1]);
+
+            //go to initial position above canvas for correct program execution
+            //MoveLinear(_initialPosition, 250, 100, MovementType.Absolute);
+            //UpdateRobotPosition();
+
+            //write position of a can with paint, shifts in 1/40 mm using both axes in a LCS, centered with bottom left can
+            ModifyVariables(5519, "dxpaint", dx);
+            ModifyVariables(5520, "dypaint", dy);
+            //each can stands 1800 units from another (45 mm)
+
+            //load a program and play
+
+            LoadProgram("takepaint.ngc");
+            Thread.Sleep(100);
+            Console.WriteLine("Program is loaded: {0}", GetLoadedProgramName());
+            PlayProgram();
+            while (GetProgramStatus() != "idle")
+                Thread.Sleep(100);
+
+            //a brush should return to the initial position above canvas
+        }
+
+
+        /// <summary>
+        /// Move robot away and take a photo
+        /// </summary>
+        public void TakeaPhoto()
+        {
+            LoadProgram("takeaphoto.ngc");
+            Thread.Sleep(100);
+            Console.WriteLine("Program is loaded: {0}", GetLoadedProgramName());
+            PlayProgram();
+            while (GetProgramStatus() != "idle")
+                Thread.Sleep(100);
+        }
+
+        public void PlaceBrush()
+        {
+            LoadProgram("placebrush.ngc");
+            Thread.Sleep(100);
+            Console.WriteLine("Program is loaded: {0}", GetLoadedProgramName());
+            PlayProgram();
+            while (GetProgramStatus() != "idle")
+                Thread.Sleep(100);
+        }
+
+        public void PlaceWasher()
+        {
+            LoadProgram("placewasher.ngc");
+            Thread.Sleep(100);
+            Console.WriteLine("Program is loaded: {0}", GetLoadedProgramName());
+            PlayProgram();
+            Thread.Sleep(1500); //17 sec for the command
+            while (GetProgramStatus() != "idle")
+            {
+                Console.WriteLine("Program is running!");
+                Thread.Sleep(1000);
+            }
+        }
+
+        public void TakeWasher()
+        {
+            LoadProgram("takewasher.ngc");
+            Thread.Sleep(100);
+            Console.WriteLine("Program is loaded: {0}", GetLoadedProgramName());
+            PlayProgram();
+            Thread.Sleep(500); //15 sec for the command
+            while (GetProgramStatus() != "idle")
+            {
+                Console.WriteLine("Program is running!");
+                Thread.Sleep(1000);
+            }
+        }
+
+        public void PlaceDrier()
+        {
+            LoadProgram("placedryer.ngc");
+            Thread.Sleep(10);
+            Console.WriteLine("Program is loaded: {0}", GetLoadedProgramName());
+            PlayProgram();
+            while (GetProgramStatus() != "idle")
+            {
+                Console.WriteLine("Program is running!");
+                Thread.Sleep(1000);
+            }
+        }
+
+        public void TakeDrier()
+        {
+            LoadProgram("takedryer.ngc");
+            Thread.Sleep(100);
+            Console.WriteLine("Program is loaded: {0}", GetLoadedProgramName());
+            PlayProgram();
+            Thread.Sleep(1500); //17 sec for the command
+            while (GetProgramStatus() != "idle")
+            {
+                Console.WriteLine("Program is running!");
+                Thread.Sleep(1000);
+            }
+        }
+
+        public void Delay(double[] timetowait)
+        {
+            Thread.Sleep((int)timetowait[0]*1000);
+        }
+
 
         // Raw method, will be implemented soon
         public void MixWater()

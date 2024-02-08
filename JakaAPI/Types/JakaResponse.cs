@@ -24,13 +24,17 @@ namespace JakaAPI.Types
         public Math.CartesianPosition ArmCartesianPosition { get; private set; }
 
         public RobotData(string rawJson)
-        {            
-            JsonObject jsonObject = JsonNode.Parse(rawJson)!.AsObject();
+        {
+            //JsonObject jsonObject = JsonNode.Parse(rawJson)!.AsObject();
+            //double[] jointsArr = jsonObject["joint_actual_position"]!.AsArray().Deserialize<double[]>()!;
 
-            double[] jointsArr = jsonObject["joint_actual_position"]!.AsArray().Deserialize<double[]>()!;
+            var outdata = JsonSerializer.Deserialize<Dictionary<string, object>>(rawJson);//convert output into dictionary of string-string
+            double[] jointsArr = ((JsonElement)outdata["joint_actual_position"]).Deserialize<double[]>();
+
             ArmJointsPosition = new JointsPosition(jointsArr);
 
-            double[] cartesianArr = jsonObject["actual_position"]!.AsArray().Deserialize<double[]>()!;
+            //double[] cartesianArr = jsonObject["actual_position"]!.AsArray().Deserialize<double[]>()!;
+            double[] cartesianArr = ((JsonElement)outdata["actual_position"]).Deserialize<double[]>();
             ArmCartesianPosition = new Math.CartesianPosition(cartesianArr);
         }
 

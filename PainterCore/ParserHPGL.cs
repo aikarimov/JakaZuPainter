@@ -27,6 +27,14 @@ namespace PainterCore
         PU, // Pen up and move to (x, y)
         PD, // Pen down and move to (x, y)
         BM, // Brush move down to (x, y, deltaz) 
+        TP, // Take paint from (dx, dy) paint can
+        PB, // place brush to (n) position 
+        BW, //place brush to washer    
+        TW, //take brush from washer    
+        BD, //place brush to drier 
+        TD, // take brush from dier
+        BB, //brush move bezier using 4 points
+        DL, //Delay in sec
     }
 
     public class ParserHPGL
@@ -77,10 +85,10 @@ namespace PainterCore
             for (int i = 0; i < argsArr.Length; i++)
             {
                 arguments[i] = Double.Parse(argsArr[i], CultureInfo.InvariantCulture);
-                if (code != CodeHPGL.PC) //if numbers do not refer to special commands
+                /*if (code != CodeHPGL.PC) //if numbers do not refer to special commands
                 {
                     arguments[i] *= sf; //convert HPGL units to mm
-                }
+                }*/
             }
 
             return new CommandHPGL(code, arguments);

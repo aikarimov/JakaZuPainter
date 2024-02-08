@@ -9,7 +9,7 @@ namespace PainterCore
     {
         private static void PrintLicenseInfo()
         {
-            Console.WriteLine("\tRobot-painter  Copyright (C) 2023  E. Shteinberg, A. Skuratov\n" +
+            Console.WriteLine("\tRobot-painter  Copyright (C) 2023  E. Shteinberg, A. Skuratov\n  Copyright (C) 2024  A. Karimov \n" +
                 "\tThis program comes with ABSOLUTELY NO WARRANTY.\n" +
                 "\tThis is free software, and you are welcome to redistribute it under certain conditions.\n");
         }
