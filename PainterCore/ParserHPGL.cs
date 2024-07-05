@@ -33,7 +33,8 @@ namespace PainterCore
         TW, //take brush from washer    
         BD, //place brush to drier 
         TD, // take brush from dier
-        BB, //brush move bezier using 4 points
+        BB, //brush move bezier using 5 points
+        BS, //brush move using TCP Sockets
         DL, //Delay in sec
     }
 

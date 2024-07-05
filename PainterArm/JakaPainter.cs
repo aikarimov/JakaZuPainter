@@ -2,6 +2,9 @@
 using JakaAPI.Types.Math;
 using JakaAPI;
 using PainterArm.Calibration;
+using System.Net;
+using System.Net.Sockets;
+using System.Text;
 
 namespace PainterArm
 {
@@ -343,9 +346,222 @@ namespace PainterArm
             }
         }
 
-        public void Delay(double[] timetowait)
+        public async void Delay(double[] timetowait)
         {
-            Thread.Sleep((int)timetowait[0]*1000);
+            //Thread.Sleep((int)timetowait[0]*1000);
+
+            IPEndPoint ipEndPoint = new(IPAddress.Parse("192.168.1.102"), 1500);
+            Socket listener = new Socket(ipEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+            listener.Bind(ipEndPoint);
+            listener.Listen(100);
+
+            LoadProgram("socket1.ngc");
+            Thread.Sleep(100);
+            Console.WriteLine("Program is loaded: {0}", GetLoadedProgramName());
+            PlayProgram();
+
+            //Thread.Sleep(1000);
+
+            byte[] messageBytes = BitConverter.GetBytes(1);
+
+            var handler = await listener.AcceptAsync();
+            await handler.SendAsync(messageBytes, 0);
+
+           
+
+            var buffer = new byte[1_024];
+            var received = await handler.ReceiveAsync(buffer, SocketFlags.None);
+
+            var response = Encoding.UTF8.GetString(buffer, 0, received);
+
+            Console.WriteLine($"Socket client received acknowledgment: \"{response}\"");
+
+            
+
+            listener.Close();
+        }
+
+        /// <summary>
+        /// Brush cartesian move in 3D coordinates with socket communication
+        /// </summary>
+        /// <param name="coordinates"> X, Y, dZ coordinates in millimeters</param>
+        public void BrushSocket(double[] coordinates)
+        {
+            int N = coordinates.Length;
+            int npts = (int)Math.Floor(N / 3.0); //number of points in the stroke
+
+            const int datalength = 43;
+            //int[] coords = new int[datalength];
+            float[] coords = new float[datalength];
+
+            coords[0] = npts;
+            for (int j = 0; j < N; j += 3)
+            {
+                double x = coordinates[j];
+                double y = coordinates[j + 1];
+                double z = coordinates[j + 2];
+
+                float dx = (float)(x);
+                float dy = (float)(y);
+                float dz = (float)(z);
+
+                coords[j + 1] = dx;
+                coords[j + 2] = dy;
+                coords[j + 3] = dz;
+            }
+
+
+            IPEndPoint ipEndPoint = new(IPAddress.Parse("192.168.1.102"), 1500);
+            Socket listener = new Socket(ipEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+            listener.Bind(ipEndPoint);
+            listener.Listen(1);
+
+
+            byte[] messageBytes;
+            String s = "[";
+            for (int j = 0; j < datalength; j++)
+            {
+                s += Convert.ToString(coords[j]);
+                if (j < datalength - 1)
+                    s += ",";
+            }
+            s +="]";
+
+            LoadProgram("socket1.ngc");
+            Thread.Sleep(100);
+            Console.WriteLine("Program is loaded: {0}", GetLoadedProgramName());
+            PlayProgram(false);
+
+            //var handler = await listener.AcceptAsync();
+            var handler = listener.Accept();
+
+            var buffer = new byte[256];
+            //var received = await handler.ReceiveAsync(buffer, SocketFlags.None);
+            var received = handler.Receive(buffer, SocketFlags.None);
+            var response = Encoding.UTF8.GetString(buffer, 0, received);
+            Console.WriteLine($"Socket client received acknowledgment: \"{response}\"");
+
+
+            messageBytes = System.Text.Encoding.ASCII.GetBytes(s);
+            //messageBytes = Encoding.ASCII.GetBytes("<N><1>");
+            //await handler.SendAsync(messageBytes, 0);
+            //messageBytes = BitConverter.GetBytes(1);
+
+            handler.Send(messageBytes, 0);
+
+            //received = await handler.ReceiveAsync(buffer, SocketFlags.None);
+            received = handler.Receive(buffer, SocketFlags.None);
+            response = Encoding.UTF8.GetString(buffer, 0, received);
+            Console.WriteLine($"Socket client received acknowledgment: \"{response}\"");
+
+            listener.Close();
+
+            OnPostCommand();
+            while (GetProgramStatus() != "idle")
+                Thread.Sleep(100);
+        }
+
+
+        /// <summary>
+        /// Brush cartesian move in 3D coordinates with socket communication
+        /// </summary>
+        /// <param name="coordinates"> X, Y, dZ coordinates in millimeters</param>
+        public void BrushSocket2(double[] coordinates)
+        {
+            //no more than 42 points in the stroke
+            //determine amounts of data to be sent
+            int N = coordinates.Length;
+            int npts = (int)Math.Floor(N / 3.0); //number of points in the stroke
+
+            const int datalength = 42;
+            float[] coords = new float[datalength];
+            (int ncycles, int remcycles) = Math.DivRem(N, datalength);
+
+            //start socket communication
+            IPEndPoint ipEndPoint = new(IPAddress.Parse("192.168.1.102"), 1500);
+            Socket listener = new Socket(ipEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+            listener.Bind(ipEndPoint);
+            listener.Listen(1);
+
+            //load program on robot controller
+            LoadProgram("socket3.ngc");
+            Thread.Sleep(100);
+            Console.WriteLine("Program is loaded: {0}", GetLoadedProgramName());
+            PlayProgram(false);
+
+            var handler = listener.Accept();
+
+            //receive message about receiving data
+            var buffer = new byte[256];
+            var received = handler.Receive(buffer, SocketFlags.None);
+            var response = Encoding.UTF8.GetString(buffer, 0, received);
+            Console.WriteLine($"Socket client received acknowledgment: \"{response}\"");
+
+            //send message with npts
+            byte[] messageBytes;
+            String str = "<N><" + Convert.ToString(N) + ">";
+            messageBytes = System.Text.Encoding.ASCII.GetBytes(str);
+            handler.Send(messageBytes, 0);
+            Console.WriteLine(str);
+
+            //received = await handler.ReceiveAsync(buffer, SocketFlags.None);
+            received = handler.Receive(buffer, SocketFlags.None);
+            response = Encoding.UTF8.GetString(buffer, 0, received);
+            Console.WriteLine($"Socket client received acknowledgment: \"{response}\"");
+            Thread.Sleep(100);
+
+
+            for (int i = 0; i < ncycles + 1; i++)
+            {
+                int niter = datalength;
+                if (i == ncycles)
+                    niter = remcycles;
+
+                for (int j = 0; j < niter; j += 3)
+                {
+                    double x = coordinates[datalength * i + j];
+                    double y = coordinates[datalength * i + j + 1];
+                    double z = coordinates[datalength * i + j + 2];
+
+                    float dx = (float)(x);
+                    float dy = (float)(y);
+                    float dz = (float)(z);
+
+                    coords[j] = dx;
+                    coords[j + 1] = dy;
+                    coords[j + 2] = dz;
+                }
+                
+                String s = "[";
+                for (int j = 0; j < datalength; j++)
+                {
+                    s += Convert.ToString(coords[j]);
+                    if (j < datalength - 1)
+                        s += ",";
+                }
+                s += "]";
+
+                //received = await handler.ReceiveAsync(buffer, SocketFlags.None);
+                received = handler.Receive(buffer, SocketFlags.None);
+                response = Encoding.UTF8.GetString(buffer, 0, received);
+                Console.WriteLine($"Socket client received acknowledgment: \"{response}\"");
+
+                messageBytes = System.Text.Encoding.ASCII.GetBytes(s);
+                handler.Send(messageBytes, 0);
+
+                received = handler.Receive(buffer, SocketFlags.None);
+                response = Encoding.UTF8.GetString(buffer, 0, received);
+                Console.WriteLine($"Socket client received acknowledgment: \"{response}\"");
+
+                //Thread.Sleep(100);
+            }
+            //stop communication
+            listener.Close();
+
+            //let the robot perform the task
+            OnPostCommand();
+            while (GetProgramStatus() != "idle")
+                Thread.Sleep(100);
         }
 
 

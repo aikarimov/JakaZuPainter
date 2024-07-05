@@ -13,6 +13,7 @@ namespace PainterCore
             //const string ip = "192.168.1.101";
             const string ip = "192.168.1.100";
 
+
             _painter = new(ip);
             _palette = new(_painter);
             _mixer = new();
@@ -39,7 +40,15 @@ namespace PainterCore
             Console.ReadKey();
 
             //ParserHPGL commands = new(@"..\..\..\Resources\strokes_lib.plt");
-            ParserHPGL commands = new(@"..\..\..\Resources\strokes_lib_bb.plt");
+            //ParserHPGL commands = new(@"..\..\..\Resources\strokes_lib_bb.plt");
+            //ParserHPGL commands = new(@"..\..\..\Resources\strokes_exp.plt");
+            //ParserHPGL commands = new(@"..\..\..\Resources\delay.plt");
+            ParserHPGL commands = new(@"..\..\..\Resources\strokes_calligraphy.plt");
+            //ParserHPGL commands = new(@"..\..\..\Resources\phonglib.plt");
+            //ParserHPGL commands = new(@"..\..\..\Resources\Circle.plt");
+
+
+            //ParserHPGL commands = new(@"..\..\..\Resources\strokes_vincent.plt");
             //ParserHPGL commands = new(@"..\..\..\Resources\strokes_randlib.plt");
 
 
@@ -99,6 +108,11 @@ namespace PainterCore
                     case CodeHPGL.DL:
                         Console.Beep(100, 500);
                         _painter.Delay(command.Arguments);
+                        break;
+                    case CodeHPGL.BS:
+                        Console.Beep();
+                        //_painter.BrushSocket(command.Arguments);
+                        _painter.BrushSocket2(command.Arguments);
                         break;
                 }
                 //Thread.Sleep(500);
